@@ -1,6 +1,10 @@
 name: Test
 on:
   workflow_dispatch:
+    inputs:
+        commit_sha:
+          description: 'e2527110999d9ff59586260acb40019685f91bce'
+          required: true
 
 jobs:
   calculate-and-send:
