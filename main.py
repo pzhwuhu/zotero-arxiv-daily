@@ -6,7 +6,7 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 os.environ["TOKENIZERS_PARALLELISM"] = "false"
 from pyzotero import zotero
-from recommender import rerank_paper
+from recommender import prefilter_paper, rerank_paper
 from construct_email import render_email, send_email
 from tqdm import trange,tqdm
 from loguru import logger
@@ -105,6 +105,7 @@ if __name__ == '__main__':
     add_argument('--zotero_ignore',type=str,help='Zotero collection to ignore, using gitignore-style pattern.')
     add_argument('--send_empty', type=bool, help='If get no arxiv paper, send empty email',default=False)
     add_argument('--max_paper_num', type=int, help='Maximum number of papers to recommend',default=100)
+    add_argument('--prefilter_multiplier', type=int, help='Keep this many times MAX_PAPER_NUM candidates before reranking', default=6)
     add_argument('--arxiv_query', type=str, help='Arxiv search query')
     add_argument('--smtp_server', type=str, help='SMTP server')
     add_argument('--smtp_port', type=int, help='SMTP port')
@@ -168,6 +169,12 @@ if __name__ == '__main__':
         if not args.send_empty:
           exit(0)
     else:
+        if args.max_paper_num != -1:
+            keep_num = max(args.max_paper_num * args.prefilter_multiplier, args.max_paper_num)
+            if len(papers) > keep_num:
+                logger.info(f"Prefiltering {len(papers)} arxiv papers down to top {keep_num} by title and abstract...")
+                papers = prefilter_paper(papers, corpus, keep_num)
+                logger.info(f"Remaining {len(papers)} papers after prefiltering.")
         logger.info("Reranking papers...")
         papers = rerank_paper(papers, corpus)
         if args.max_paper_num != -1:
